@@ -22,26 +22,6 @@ The application uses an OpenAI model to generate SQL, validates it, executes it 
 - python-dotenv
 - Uvicorn
 
-## Project Structure
-
-sql-agent/
-│
-├── app/
-│   ├── db.py
-│   ├── llm.py
-│   ├── schema.py
-│   └── __init__.py
-│
-├── dsa/
-├── notes/
-├── tests/
-│
-├── chinook.db
-├── .env
-├── pyproject.toml
-└── README.md
-```
-
 ## How to Run
 
 ### 1. Clone the repository
