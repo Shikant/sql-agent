@@ -58,3 +58,6 @@ uv run uvicorn app.main:app --reload
 
 Use the interactive Swagger UI to ask questions in natural language.
 
+<img width="458" height="58" alt="image" src="https://github.com/user-attachments/assets/94957cdc-4b02-44f0-97ef-5d616055f5b1" />
+
+
