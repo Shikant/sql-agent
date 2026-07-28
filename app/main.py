@@ -1,3 +1,4 @@
+from app.agent import generate_sql
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -13,4 +14,9 @@ def health():
 
 @app.post('/ask', response_model=AskResponse)
 def ask(req: AskRequest):
-    return AskResponse(sql='SELECT 1', rows=[[1]])
+    sql = generate_sql(req.question)
+
+    return AskResponse(
+        sql=sql,
+        rows=[]
+    )
