@@ -10,3 +10,7 @@ app = FastAPI()
 @app.get('/health')
 def health():
     return {'status':'ok'}
+
+@app.post('/ask', response_model=AskResponse)
+def ask(req: AskRequest):
+    return AskResponse(sql='SELECT 1', rows=[[1]])
