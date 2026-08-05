@@ -14,7 +14,7 @@ app = FastAPI()
 def health():
     return {'status':'ok'}
 
-@app.post("/ask", response_model=AskResponse)
+@app.post('/ask', response_model=AskResponse)
 def ask(req: AskRequest):
     sql = generate_sql(req.question)
 
@@ -24,9 +24,16 @@ def ask(req: AskRequest):
             rows=[["INVALID SQL"]]
         )
 
-    rows = run_sql(sql)
+    result = run_sql(sql)
+
+    if not result['ok']:
+        return AskResponse(
+            sql=sql,
+            rows=[[result['error']]]
+        )
 
     return AskResponse(
         sql=sql,
-        rows=rows
+        rows=result['rows']
     )
+
