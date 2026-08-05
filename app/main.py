@@ -1,10 +1,11 @@
-from app.agent import generate_sql
+from app.agent import generate_sql, is_valid
 from fastapi import FastAPI
 from pydantic import BaseModel
 from app.db import run_sql
 
 class AskRequest(BaseModel):
     question: str
+
 class AskResponse(BaseModel):
     sql: str
     rows: list
@@ -13,9 +14,16 @@ app = FastAPI()
 def health():
     return {'status':'ok'}
 
-@app.post('/ask', response_model=AskResponse)
+@app.post("/ask", response_model=AskResponse)
 def ask(req: AskRequest):
     sql = generate_sql(req.question)
+
+    if not is_valid(sql):
+        return AskResponse(
+            sql=sql,
+            rows=[["INVALID SQL"]]
+        )
+
     rows = run_sql(sql)
 
     return AskResponse(

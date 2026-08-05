@@ -1,3 +1,4 @@
+import sqlglot
 from app.llm import ask_llm
 from app.schema import get_schema
 from app.schema_notes import NOTES
@@ -24,6 +25,13 @@ def clean_sql(response: str) -> str:
         response = response[3:]
 
     return response.strip()
+
+def is_valid(sql: str) -> bool:
+    try:
+        sqlglot.parse_one(sql, read="sqlite")
+        return True
+    except Exception:
+        return False
 
 
 def generate_sql(question: str) -> str:
