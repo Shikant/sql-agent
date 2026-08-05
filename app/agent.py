@@ -1,5 +1,6 @@
 from app.llm import ask_llm
 from app.schema import get_schema
+from app.schema_notes import NOTES
 
 
 def clean_sql(response: str) -> str:
@@ -28,11 +29,20 @@ def clean_sql(response: str) -> str:
 def generate_sql(question: str) -> str:
     schema = get_schema()
 
+    notes = "\n".join(
+    f"{table}: {description}"
+    for table, description in NOTES.items()
+    )
+
     prompt = (
-        f"You are a SQLite expert. Database schema:\n{schema}\n\n"
-        f"Write ONE SQLite query for this question. "
-        f"Return ONLY the SQL, no explanation, no markdown.\n"
-        f"Question: {question}"
+    f"You are a SQLite expert.\n\n"
+    f"Database schema:\n"
+    f"{schema}\n\n"
+    f"Table notes:\n"
+    f"{notes}\n\n"
+    f"Write ONE SQLite query for this question.\n"
+    f"Return ONLY the SQL, no explanation, no markdown.\n\n"
+    f"Question: {question}"
     )
 
     sql = ask_llm(prompt)
