@@ -56,3 +56,15 @@ def generate_sql(question: str) -> str:
     sql = ask_llm(prompt)
 
     return clean_sql(sql)
+
+def generate_and_run(question, max_tries=3):
+    from app.db import run_sql
+    error = None; sql = ''
+    for attempt in range(max_tries):
+        hint = f'\nThe previous query failed with this error: {error}. Fix it.' if error else ''
+        sql = generate_sql(question + hint)
+        result = run_sql(sql)
+        if result['ok']:
+            return {'sql': sql, 'rows': result['rows'], 'tries': attempt+1}
+        error = result['error']
+    return {'sql': sql, 'rows': [], 'error': error, 'tries': max_tries}
