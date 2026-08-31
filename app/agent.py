@@ -1,8 +1,11 @@
 import sqlglot
+import logging
 from app.llm import ask_llm
 from app.schema import get_schema
 from app.schema_notes import NOTES
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def clean_sql(response: str) -> str:
     response = response.strip()
@@ -59,12 +62,25 @@ def generate_sql(question: str) -> str:
 
 def generate_and_run(question, max_tries=3):
     from app.db import run_sql
-    error = None; sql = ''
+
+    error = None
+    sql = ''
+
     for attempt in range(max_tries):
+        logger.info(f"Attempt {attempt + 1}")
+
         hint = f'\nThe previous query failed with this error: {error}. Fix it.' if error else ''
         sql = generate_sql(question + hint)
+
+        logger.info(f"SQL: {sql}")
+
         result = run_sql(sql)
+
         if result['ok']:
-            return {'sql': sql, 'rows': result['rows'], 'tries': attempt+1}
+            logger.info("SQL executed successfully")
+            return {'sql': sql, 'rows': result['rows'], 'tries': attempt + 1}
+
         error = result['error']
+        logger.error(f"SQL error: {error}")
+
     return {'sql': sql, 'rows': [], 'error': error, 'tries': max_tries}

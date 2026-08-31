@@ -60,11 +60,3 @@ Use the interactive Swagger UI to ask questions in natural language.
 
 <img width="458" height="58" alt="image" src="https://github.com/user-attachments/assets/94957cdc-4b02-44f0-97ef-5d616055f5b1" />
 
-## Results
-
-- Converts natural language into SQLite queries using an LLM.
-- Executes queries against the Chinook database.
-- Returns SQL and query results through a FastAPI API.
-- Achieves 93.3% accuracy on a 15-question evaluation set.
-
-
