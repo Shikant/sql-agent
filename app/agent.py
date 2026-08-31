@@ -1,33 +1,34 @@
-import sqlglot
 import logging
+
+import sqlglot
+
+from app.db import run_sql
 from app.llm import ask_llm
 from app.schema import get_schema
 from app.schema_notes import NOTES
 
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 def clean_sql(response: str) -> str:
     response = response.strip()
 
-    # Remove Markdown code fences
     if response.startswith("```"):
         lines = response.splitlines()
-
-        # Remove opening ``` or ```sql
         lines = lines[1:]
 
-        # Remove closing ```
         if lines and lines[-1].strip() == "```":
             lines = lines[:-1]
 
         response = "\n".join(lines)
 
-    # Remove a leading 'sql' if present
     if response.lower().startswith("sql"):
         response = response[3:]
 
     return response.strip()
+
 
 def is_valid(sql: str) -> bool:
     try:
@@ -37,50 +38,85 @@ def is_valid(sql: str) -> bool:
         return False
 
 
-def generate_sql(question: str) -> str:
+def generate_sql(question: str, previous_sql: str = "", error: str = "") -> str:
     schema = get_schema()
 
     notes = "\n".join(
-    f"{table}: {description}"
-    for table, description in NOTES.items()
+        f"{table}: {description}"
+        for table, description in NOTES.items()
     )
 
+    retry_context = ""
+
+    if previous_sql and error:
+        retry_context = (
+            "\n\nThe previous SQL query failed.\n"
+            f"Previous SQL:\n{previous_sql}\n\n"
+            f"Database error:\n{error}\n\n"
+            "Correct the SQL query based on this error. "
+            "Return ONLY the corrected SQLite SQL."
+        )
+
     prompt = (
-    f"You are a SQLite expert.\n\n"
-    f"Database schema:\n"
-    f"{schema}\n\n"
-    f"Table notes:\n"
-    f"{notes}\n\n"
-    f"Write ONE SQLite query for this question.\n"
-    f"Return ONLY the SQL, no explanation, no markdown.\n\n"
-    f"Question: {question}"
+        "You are a SQLite expert.\n\n"
+        f"Database schema:\n{schema}\n\n"
+        f"Table notes:\n{notes}\n\n"
+        "Write ONE SQLite query for this question.\n"
+        "Return ONLY the SQL, no explanation, no markdown.\n\n"
+        f"Question: {question}"
+        f"{retry_context}"
     )
 
     sql = ask_llm(prompt)
 
     return clean_sql(sql)
 
-def generate_and_run(question, max_tries=3):
-    from app.db import run_sql
 
-    error = None
-    sql = ''
+def generate_and_run(question: str, max_tries: int = 3):
+    previous_sql = ""
+    error = ""
 
     for attempt in range(max_tries):
-        logger.info(f"Attempt {attempt + 1}")
+        logger.info(f"Attempt {attempt + 1}/{max_tries}")
 
-        hint = f'\nThe previous query failed with this error: {error}. Fix it.' if error else ''
-        sql = generate_sql(question + hint)
+        sql = generate_sql(
+            question,
+            previous_sql=previous_sql,
+            error=error,
+        )
 
-        logger.info(f"SQL: {sql}")
+        logger.info(f"Generated SQL:\n{sql}")
+
+        # Validate SQL syntax before sending it to SQLite.
+        if not is_valid(sql):
+            error = "Invalid SQLite syntax"
+            previous_sql = sql
+
+            logger.error(f"SQL validation failed: {error}")
+            continue
 
         result = run_sql(sql)
 
-        if result['ok']:
-            logger.info("SQL executed successfully")
-            return {'sql': sql, 'rows': result['rows'], 'tries': attempt + 1}
+        if result["ok"]:
+            logger.info(
+                f"SQL executed successfully on attempt {attempt + 1}"
+            )
 
-        error = result['error']
-        logger.error(f"SQL error: {error}")
+            return {
+                "sql": sql,
+                "rows": result["rows"],
+                "tries": attempt + 1,
+            }
 
-    return {'sql': sql, 'rows': [], 'error': error, 'tries': max_tries}
+        error = result["error"]
+        previous_sql = sql
+
+        logger.error(f"SQL execution failed: {error}")
+        logger.info("Retrying with database error feedback...")
+
+    return {
+        "sql": previous_sql,
+        "rows": [],
+        "error": error,
+        "tries": max_tries,
+    }
