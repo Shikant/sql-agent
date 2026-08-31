@@ -22,6 +22,16 @@ def run_sql(sql: str):
         }
 
 
+def explain(sql: str):
+    with sqlite3.connect("chinook.db") as con:
+        return [
+            list(r)
+            for r in con.execute(
+                "EXPLAIN QUERY PLAN " + sql
+            ).fetchall()
+        ]
+
+
 if __name__ == "__main__":
     with get_conn() as con:
         rows = con.execute(
