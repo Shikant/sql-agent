@@ -32,10 +32,23 @@ def explain(sql: str):
         ]
 
 
-if __name__ == "__main__":
-    with get_conn() as con:
-        rows = con.execute(
-            "SELECT Name FROM Artist LIMIT 5"
-        ).fetchall()
+def check_query_plan(sql: str):
+    plan = explain(sql)
+    scanned_tables = []
 
-    print(rows)
+    for row in plan:
+        text = " ".join(str(value) for value in row)
+
+        if "SCAN TABLE" in text:
+            scanned_tables.append(text)
+
+    if scanned_tables:
+        return "WARNING: Full table scans detected:\n" + "\n".join(scanned_tables)
+
+    return "No full table scans detected."
+
+
+if __name__ == "__main__":
+    sql = "SELECT * FROM Track"
+
+    print(check_query_plan(sql))
