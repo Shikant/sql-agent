@@ -38,17 +38,62 @@ def check_query_plan(sql: str):
 
     for row in plan:
         text = " ".join(str(value) for value in row)
+        upper_text = text.upper()
 
-        if "SCAN TABLE" in text:
+        if "SCAN " in upper_text:
+            # Index scans are allowed.
+            if "USING INDEX" in upper_text:
+                continue
+
+            if "USING COVERING INDEX" in upper_text:
+                continue
+
             scanned_tables.append(text)
 
     if scanned_tables:
-        return "WARNING: Full table scans detected:\n" + "\n".join(scanned_tables)
+        return {
+            "ok": False,
+            "warning": "Full table scans detected",
+            "details": scanned_tables,
+            "plan": plan,
+        }
 
-    return "No full table scans detected."
-
+    return {
+        "ok": True,
+        "warning": None,
+        "details": [],
+        "plan": plan,
+    }
 
 if __name__ == "__main__":
-    sql = "SELECT * FROM Track"
+    test_queries = {
+        "full_scan": "SELECT * FROM Track",
+        "primary_key_lookup": (
+            "SELECT TrackId, Name "
+            "FROM Track "
+            "WHERE TrackId = 10"
+        ),
+        "join_with_filter": """
+            SELECT t.Name, a.Title
+            FROM Track t
+            JOIN Album a ON t.AlbumId = a.AlbumId
+            WHERE a.AlbumId = 5
+        """,
+    }
 
-    print(check_query_plan(sql))
+    for name, sql in test_queries.items():
+        print(f"\n--- {name} ---")
+        print(f"SQL: {sql.strip()}")
+
+        result = check_query_plan(sql)
+
+        print("Query Plan:")
+        for row in result["plan"]:
+            print(row)
+
+        if result["ok"]:
+            print("No full table scans detected.")
+        else:
+            print("WARNING: Full table scans detected:")
+            for scan in result["details"]:
+                print(scan)
